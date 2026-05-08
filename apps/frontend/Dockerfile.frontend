@@ -1,0 +1,41 @@
+# Handling des dockerfils
+
+# Der -t Parameter hat der Widererkennung nach den Namen des AWS Servicerepositories haben
+# docker buildx build --platform linux/amd64 -t pond-ecr-repo -f Dockerfile.frontend .
+# docker build -t pond-ecr-repo -f Dockerfile.frontend .
+
+# Lokal starten
+# docker run -d -p 80:80 pond-ecr-repo
+
+#
+# Remote AWS Repo und ECS
+#
+
+# docker tag
+# docker tag pond-ecr-repo:latest 537124936702.dkr.ecr.eu-central-1.amazonaws.com/pond-ecr-repo:latest
+
+
+# docker push
+# docker push 537124936702.dkr.ecr.eu-central-1.amazonaws.com/pond-ecr-repo:latest
+
+
+# aws-vault exec pond-sandbox -- aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin 537124936702.dkr.ecr.eu-central-1.amazonaws.com
+
+
+# aws-vault exec pond-sandbox -- aws ecs describe-tasks --cluster nginx-cluster --tasks 14bb52e05dac4d69b1214029a24648a0 | grep public
+
+# löschen
+# aws-vault exec pond-sandbox -- aws ecr list-images --repository-name pond-ecr-repo
+# aws-vault exec pond-sandbox -- aws ecr batch-delete-image --repository-name pond-ecr-repo --image-ids imageDigest=sha256:2c4aafc102238915b813cd18cb828dd787650ab33eed3c718b174b58dcdf01db --region eu-central-1
+
+FROM nginx:alpine
+
+WORKDIR /usr/share/nginx/html
+
+COPY index.html /usr/share/nginx/html/index.html
+COPY pond.png /usr/share/nginx/html/pond.png
+COPY nginx.conf /etc/nginx/nginx.conf
+
+EXPOSE 80
+
+ENTRYPOINT ["/usr/sbin/nginx", "-g", "daemon off;"]
