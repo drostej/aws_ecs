@@ -4,6 +4,8 @@ Diese Tools werden benötigt, um die Beispiele und Anleitungen in den Dokumentat
 
 ## 0. AWS Sandbox
 
+https://sandbox-service.shared.services.aws.de.pri.o2.com/home
+
 
 
 
