@@ -1,9 +1,11 @@
 # 1. Prüfen, ob das lokale Image existiert
 docker images | grep pond-ecr-repo
 
+# Vorher einen AWS-Kontext aktivieren, z. B. mit `awsume tefde-sandbox`
+
 # 2. Bei AWS ECR anmelden
 
-aws ecr get-login-password --region eu-central-1 --profile tefde-sandbox \
+aws ecr get-login-password --region eu-central-1 \
 | docker login \
 --username AWS \
 --password-stdin 230355213662.dkr.ecr.eu-central-1.amazonaws.com

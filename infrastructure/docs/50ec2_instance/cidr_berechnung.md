@@ -32,12 +32,20 @@ Der CIDR-Block wird basierend auf **verfügbarem IP-Adressraum in der VPC** ermi
 ## Automatisch ermitteln
 
 ```bash
+# Vorher einen AWS-Kontext aktivieren, z. B. mit `awsume tefde-sandbox`
+# Die Terraform-Konfiguration verwendet standardmäßig die Default VPC.
+# Die VPC-ID kann bei Bedarf so ermittelt werden:
+VPC_ID=$(aws ec2 describe-vpcs \
+  --filters Name=isDefault,Values=true \
+  --query 'Vpcs[0].VpcId' \
+  --output text \
+  --region eu-central-1)
+
 # Zeige verfügbare CIDR-Blöcke
 aws ec2 describe-subnets \
-  --filters "Name=vpc-id,Values=vpc-0f3b8e31600886d09" \
+  --filters "Name=vpc-id,Values=$VPC_ID" \
   --query 'Subnets[*].CidrBlock' \
   --output text \
-  --profile tefde-sandbox \
   --region eu-central-1 | sort
 ```
 

@@ -1,6 +1,6 @@
 Vorbereitung:
 - In der Konsole, zunächst wie es sich für sensible Systeme gehört, MFA konfigurieren
-- Access Keys Anlegen und in dem Credemtoaös ablegen
+- AWS-Zugang vorbereiten, z. B. über `awsume`, `aws-vault` oder ein gültiges `AWS_PROFILE`
 
 Artikel:
 https://devopscube.com/setup-terraform-remote-state-s3-dynamodb/
@@ -8,20 +8,25 @@ https://devopscube.com/setup-terraform-remote-state-s3-dynamodb/
 ### Konfiguration dieser...
 - Empfohlen für die Arbeit mit der AWS CLI ist ein SSO token provider https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html
 
-- Aus dem AWS Account, unter security credentials,key_id und aws_secret_key kopieren.
-- Anzulegen sind 
+- OpenTofu verwendet die aktuell aktive AWS-Authentifizierung. In diesem Repository ist absichtlich **kein festes Profil** mehr im Code hinterlegt.
+- Vor `tofu init`, `tofu plan` oder `tofu apply` daher **immer zuerst** einen AWS-Kontext aktivieren.
 
-***~/.aws/config:***
+***Beispiel mit `awsume`:***
 
 ```
-[profile tefde-sandbox]
+awsume tefde-sandbox
 ```
 
-***~/.aws/credentials:***
+***Alternativ mit `AWS_PROFILE`:***
+
 ```
-[tefde-sandbox]
-aws_access_key_id = AKIAW3SM6FC72LNDHYDL
-aws_secret_access_key = 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
+export AWS_PROFILE=tefde-sandbox
+```
+
+***Kurztest vor OpenTofu:***
+
+```
+aws sts get-caller-identity --region eu-central-1
 ```
 
 ![state 20241014113645.png](20241014113645.png)]
@@ -30,20 +35,23 @@ aws_secret_access_key = od5lqmxIS+T/+F60qPcg6vPBI5CGltTDbHhNkaFW
 Um einen state (Vergelich mit Konflikten in git) für alle effektiv einzusetzten, wird im ASS eine DynamoDB Tabelle (Wer blockt den state?) 
 und ein S3 bucket mit dem state selbst angelegt. Dieser kann im Landingzone sehr lang sein.
 
+Wichtig: Dieses Repository startet **absichtlich ohne aktiviertes S3-Backend**. So kann die Infrastruktur im ersten Schritt lokal gebootstrapped werden, ohne dass ein alter oder fremder Bucket-Name den Ablauf blockiert.
+
 
 Der Terraform workflow ist der folgene:
 - ***main.tf*** oder andere Dateien anlegen
-- Mit ***terraform init*** wird das Verzeichnis initialisiert ---> vergeich git init
-- Der Terraform state/lock wird dann der erste Schritt, der auf die Umgebung des Profils zugreift ***aws-vault exec pond-sandbox -- terraform apply***
-- Sind die unter apply gelisteten Änderungen wie geplant und erwartet, setzt man die Änderungen um ***aws-vault exec pond-sandbox -- terraform apply***
-- Mit ***terraform destroy*** löscht man die Instanz
+- Mit ***tofu init*** wird das Verzeichnis initialisiert ---> vergleichbar mit `git init`
+- `tofu plan` zeigt die geplanten Änderungen an
+- Sind die unter `plan` gelisteten Änderungen wie erwartet, setzt man sie mit `tofu apply` um
+- Optional kann der lokale State danach in ein S3-Backend migriert werden
+- Mit ***tofu destroy*** löscht man die Instanz
 
 
 Vorbereitung:
 - In der Konsole, zunächst wie es sich für sensible Systeme gehört, MFA konfigurieren
-- Access Keys Anlegen und in dem Credemtoaös ablegen
-- Herausfinden wie das vpc heisst, das AWS automatisch anlegt, durch nachschauen in der Konsole oder die Konsolenversion:
-- ``` aws ec2 describe-vpcs --query 'Vpcs[*].[VpcId,Tags[?Key==`Name`].Value|[0],CidrBlock]' --output table```
+- AWS-Kontext aktivieren (`awsume tefde-sandbox` oder `export AWS_PROFILE=tefde-sandbox`)
+- Die Terraform-Konfiguration verwendet automatisch die **Default VPC** des Accounts in `eu-central-1`.
+- Das öffentliche und das private Subnetz werden dabei von OpenTofu selbst angelegt; eine bestehende Subnet-ID muss nicht mehr manuell nachgeschlagen werden.
 
 
 
@@ -54,43 +62,57 @@ Vorbereitung:
 
 ## Schritte auf der Konsole:
 
-Das kann in die .bashrc eingetragen werden, wenn man nur ein AWS Profil nutzt.
- ```export AWS_PROFILE=tefde-sandbox```
+Variante A mit `awsume`:
 
-
-cd infrastructure/terraform
-terraform init
-
-Beim ersten Versuch ist hier zu erwearten, dass der bucket nicht existiert. Ein Henne/Ei Problem.
-````
-Initializing the backend...
-╷
-│ Error: Error inspecting states in the "local" backend:
-│     S3 bucket does not exist.
-│
-│ The referenced S3 bucket must have been previously created. If the S3 bucket
-│ was created within the last minute, please wait for a minute or two and try
-│ again.
-│
-│ Error: operation error S3: ListObjectsV2, https response error StatusCode: 404, RequestID: M96RGTRME5AKGQRQ, HostID: hgM5AZsQ2nnLAD8y6Qg2SEs0tWw+dtSroo1RLV2NaTdvMTKcP9hQaTfSsxfR4BxH4oOtuXtODnALQVoBsVVaqXlGhWSYRrKV2noaYM+9ldE=, NoSuchBucket:
-│
-│
-│ Prior to changing backends, OpenTofu inspects the source and destination
-│ states to determine what kind of migration steps need to be taken, if any.
-│ OpenTofu failed to load the states. The data in both the source and the
-│ destination remain unmodified. Please resolve the above error and try again.
-│
+```bash
+awsume tefde-sandbox
 ```
 
-terraform apply
+Variante B mit `AWS_PROFILE`:
 
-# Migration nach dem ersten apply
-terraform init -migrate-state
+```bash
+export AWS_PROFILE=tefde-sandbox
+```
+
+
+```bash
+cd infrastructure/terraform
+tofu init
+```
+
+Der erste `tofu init` läuft jetzt **lokal**, damit S3-Bucket und DynamoDB-Tabelle zunächst von OpenTofu selbst angelegt werden können.
+
+```bash
+tofu plan
+tofu apply
+```
+
+# Namen für den späteren Remote State anzeigen
+```bash
+tofu output terraform_state_bucket_name
+tofu output terraform_state_lock_table_name
+```
+
+# Optional: Migration auf S3 nach dem ersten apply
+```bash
+cp backend.tf.example backend.tf
+cp backend.hcl.example backend.hcl
+```
+
+Dann in `backend.hcl` den echten Bucket-Namen aus `tofu output terraform_state_bucket_name` eintragen und anschließend migrieren:
+
+```bash
+rm -rf .terraform
+tofu init -backend-config=backend.hcl -migrate-state
+```
 
 Troubleshooging:
 Eventuell wiederspenstige Resourcen in der Webkonsole oder mit der CLI löschen. 
 
 
+```bash
+rm -rf .terraform
 rm -f terraform.tfstate terraform.tfstate.backup
 tofu init
 tofu apply
+```

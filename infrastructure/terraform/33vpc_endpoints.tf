@@ -26,14 +26,6 @@ resource "aws_security_group" "vpc_endpoints_sg" {
   }
 }
 
-# Get subnet IDs for the VPC
-data "aws_subnets" "pond_subnets" {
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.pond_vpc.id]
-  }
-}
-
 # ECR API VPC Endpoint
 resource "aws_vpc_endpoint" "ecr_api" {
   vpc_id              = data.aws_vpc.pond_vpc.id
@@ -41,7 +33,7 @@ resource "aws_vpc_endpoint" "ecr_api" {
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = true
 
-  subnet_ids = data.aws_subnets.pond_subnets.ids
+  subnet_ids = [aws_subnet.midtier_subnet.id]
 
   security_group_ids = [
     aws_security_group.vpc_endpoints_sg.id
@@ -59,7 +51,7 @@ resource "aws_vpc_endpoint" "ecr_dkr" {
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = true
 
-  subnet_ids = data.aws_subnets.pond_subnets.ids
+  subnet_ids = [aws_subnet.midtier_subnet.id]
 
   security_group_ids = [
     aws_security_group.vpc_endpoints_sg.id

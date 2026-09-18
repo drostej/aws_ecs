@@ -1,30 +1,31 @@
 ## Was du tun musst, um dich einzuloggen:
-### 1. SSH Key Pair in AWS erstellen``` bash
+### 1. AWS-Kontext aktivieren
 
-```
-aws ec2 create-key-pair \
---key-name ec2-sandbox-key \
---query 'KeyMaterial' \
---output text \
---profile tefde-sandbox \
---region eu-central-1 > ~/.ssh/ec2-sandbox-key.pem
-
-chmod 400 ~/.ssh/ec2-sandbox-key.pem
+```bash
+awsume tefde-sandbox
 ```
 
-## 2. Terraform apply
+### 2. OpenTofu apply
+
 ``` bash
 cd infrastructure/terraform
-terraform apply
+tofu apply
 ```
+
+Dabei erzeugt OpenTofu automatisch:
+- ein AWS Key Pair namens `ec2-sandbox-key`
+- die lokale PEM-Datei `infrastructure/terraform/ec2-sandbox-key.pem`
 
 ## 3. SSH-Verbindung aufbauen
 ``` bash
 # Public IP aus Terraform Output
-terraform output ec2_public_ip
+tofu output ec2_public_ip
+
+# Pfad zur PEM-Datei aus Terraform Output
+tofu output -raw ec2_private_key_path
 
 # SSH Login
-ssh -i ~/.ssh/ec2-sandbox-key.pem ubuntu@3.69.174.172
+ssh -i ./ec2-sandbox-key.pem ec2-user@<PUBLIC_IP>
 ```
 
 ## Kleine Ügung Mit wget auf den nginx Container zugreifen
@@ -36,7 +37,6 @@ ssh -i ~/.ssh/ec2-sandbox-key.pem ubuntu@3.69.174.172
 ```
 aws ecs list-tasks \
 --cluster nginx-cluster \
---profile tefde-sandbox \
 --region eu-central-1
 ```
 #### Private IP des nginx Containers holen
@@ -45,7 +45,6 @@ aws ecs list-tasks \
 aws ecs describe-tasks \
 --cluster nginx-cluster \
 --tasks <TASK_ARN> \
---profile tefde-sandbox \
 --region eu-central-1 \
 --query 'tasks[0].attachments[0].details[?name==`privateIPv4Address`].value' \
 --output text

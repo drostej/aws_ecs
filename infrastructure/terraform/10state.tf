@@ -4,25 +4,19 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.71.0"
     }
-  }
-
-  #
-  # 1. Erste Ausführung (Backend auskommentiert): Erstellt S3-Bucket und DynamoDB-Tabelle
-  # 2. Backend aktivieren: Auskommentierung entfernen und terraform init -migrate-state ausführen
-  # 2. Bucket-Name anpassen: Der Bucket-Name dem echten Namen anpassen. Hier mit Zufasllswert im ersten Teil
-  backend "s3" {
-    bucket         = "terraform-state-pond-two-76045495"
-    key            = "pond/terraform.tfstate"
-    region         = "eu-central-1"
-    dynamodb_table = "terraform_state_lock"
-    encrypt        = true
-    profile        = "tefde-sandbox"
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
+    local = {
+      source  = "hashicorp/local"
+      version = "~> 2.5"
+    }
   }
 }
 
 provider "aws" {
   region = "eu-central-1"
-  profile = "tefde-sandbox"
 }
 
 provider "random" {}
@@ -69,6 +63,16 @@ resource "aws_dynamodb_table" "state_lock_table" {
     name = "LockID"
     type = "S"
   }
+}
+
+output "terraform_state_bucket_name" {
+  description = "Name des erzeugten S3-Buckets für einen optionalen Remote State"
+  value       = aws_s3_bucket.terraform-state.bucket
+}
+
+output "terraform_state_lock_table_name" {
+  description = "Name der DynamoDB-Tabelle für das State Locking"
+  value       = aws_dynamodb_table.state_lock_table.name
 }
 
 

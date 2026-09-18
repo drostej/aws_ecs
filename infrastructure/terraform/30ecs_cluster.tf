@@ -10,8 +10,8 @@ resource "aws_ecs_service" "nginx_service" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets         = [var.subnet_id_eur_cent_1]
-    security_groups = [aws_security_group.nginx_sg.id]
+    subnets          = [aws_subnet.public_subnet.id]
+    security_groups  = [aws_security_group.nginx_sg.id]
     assign_public_ip = true
   }
 
@@ -52,17 +52,11 @@ resource "aws_ecs_task_definition" "nginx_task" {
     }
   ]
   DEFINITION
-  execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
+  execution_role_arn    = aws_iam_role.ecs_task_execution_role.arn
 }
 
 resource "aws_cloudwatch_log_group" "ecs_log_group" {
-  name              = "/ecs/nginx"   # Dies sollte mit der Log-Gruppe in der Task-Definition übereinstimmen
-  retention_in_days = 7              # Optional: Aufbewahrungszeit in Tagen
+  name              = "/ecs/nginx" # Dies sollte mit der Log-Gruppe in der Task-Definition übereinstimmen
+  retention_in_days = 7            # Optional: Aufbewahrungszeit in Tagen
 }
 
-# Hier EU Central1 aus dem account der VPC eingeben
-variable "subnet_id_eur_cent_1" {
-  description = "The ID of the public subnet to use for the ECS service."
-  type        = string
-  default = "subnet-0433309f5b2a351b3"
-}
