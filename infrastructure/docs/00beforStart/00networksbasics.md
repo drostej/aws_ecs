@@ -4,14 +4,6 @@ https://www.udemy.com/course/awsnetworking/learn/lecture/16266676#overview
 #### Subnet Calculator
 https://www.davidc.net/sites/default/subnets/subnets.html
 
-
-
-## begriffe
-
-
-![[Pasted image 20250215173613.png]]
-
-
 ### AWS Availability Zones
 
 - In einer Region
